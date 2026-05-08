@@ -62,7 +62,7 @@ Add `delta_ex` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:delta_ex, "~> 0.1.0"}
+    {:delta_ex, git: "https://github.com/nasshu2916/delta_ex.git", branch: "main"}
   ]
 end
 ```
