@@ -1,0 +1,154 @@
+name: CI
+
+on:
+  push:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  MIX_ENV: test
+  RUST_TOOLCHAIN: "1.95.0"
+
+jobs:
+  test:
+    name: test (elixir ${{ matrix.elixir }} / otp ${{ matrix.otp }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - elixir: "1.18.4"
+            otp: "27.3"
+          - elixir: "1.19.5"
+            otp: "27.3"
+          - elixir: "1.19.5"
+            otp: "28.4"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup BEAM
+        uses: erlef/setup-beam@v1
+        with:
+          elixir-version: ${{ matrix.elixir }}
+          otp-version: ${{ matrix.otp }}
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          components: rustfmt, clippy
+
+      - name: Cache mix deps & PLTs
+        uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            _build
+            priv/plts
+          key: ${{ runner.os }}-mix-${{ matrix.otp }}-${{ matrix.elixir }}-${{ hashFiles('**/mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-mix-${{ matrix.otp }}-${{ matrix.elixir }}-
+
+      - name: Cache cargo registry & target
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            native/delta_ex_native/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('native/delta_ex_native/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Install dependencies
+        run: mix deps.get
+
+      - name: Check formatting
+        run: mix format --check-formatted
+
+      - name: Cargo fmt
+        working-directory: native/delta_ex_native
+        run: cargo fmt --all -- --check
+
+      - name: Cargo clippy
+        working-directory: native/delta_ex_native
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Credo
+        run: mix credo --strict
+
+      - name: Compile (warnings as errors)
+        run: mix compile --warnings-as-errors
+
+      - name: Cargo test
+        working-directory: native/delta_ex_native
+        run: cargo test
+
+      - name: Run tests
+        run: mix test
+
+      - name: Dialyzer
+        run: mix dialyzer --format github
+
+  s3-integration:
+    name: s3 integration (MinIO)
+    runs-on: ubuntu-24.04
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: erlef/setup-beam@v1
+        with:
+          elixir-version: "1.19.5"
+          otp-version: "28.4"
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+
+      - name: Cache mix deps
+        uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            _build
+          key: ${{ runner.os }}-mix-s3-28.4-1.19.5-${{ hashFiles('**/mix.lock') }}
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            native/delta_ex_native/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('native/delta_ex_native/Cargo.lock') }}
+
+      - name: Start MinIO and provision bucket
+        run: |
+          docker compose up -d minio minio-setup
+          # Wait until the setup container has finished bucket creation.
+          for _ in $(seq 1 30); do
+            if [ "$(docker compose ps -a --status exited --services | grep -c '^minio-setup$')" = "1" ]; then
+              break
+            fi
+            sleep 2
+          done
+          docker compose logs minio-setup
+
+      - run: mix deps.get
+      - run: mix compile
+
+      - name: Run S3 integration tests
+        env:
+          DELTA_EX_S3_ENDPOINT: http://127.0.0.1:9000
+          DELTA_EX_S3_BUCKET: delta-ex-test
+          AWS_REGION: us-east-1
+          AWS_ACCESS_KEY_ID: minioadmin
+          AWS_SECRET_ACCESS_KEY: minioadmin
+        run: mix test --include s3 --only s3
+
+      - name: Tear down MinIO
+        if: always()
+        run: docker compose down -v

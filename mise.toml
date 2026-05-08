@@ -1,0 +1,64 @@
+[tools]
+erlang = "28.4.1"
+elixir = "1.19.5-otp-28"
+rust = "1.95.0"
+
+[tasks."cargo:test"]
+description = "Run Rust tests"
+run = "cargo test"
+dir = "native/delta_ex_native"
+
+[tasks."cargo:fmt"]
+description = "Format Rust code"
+run = "cargo fmt --all"
+dir = "native/delta_ex_native"
+
+[tasks."cargo:clippy"]
+description = "Run Clippy lints"
+run = "cargo clippy -- -D warnings"
+dir = "native/delta_ex_native"
+
+[tasks."cargo:clippy:fix"]
+description = "Run Clippy and fix issues automatically"
+run = "cargo clippy --fix --allow-dirty --allow-staged"
+dir = "native/delta_ex_native"
+
+[tasks."cargo:check"]
+description = "Run cargo check"
+run = "cargo check"
+dir = "native/delta_ex_native"
+
+[tasks.setup]
+description = "Initial setup for the project"
+run = "mix deps.get && cd native/delta_ex_native && cargo fetch"
+
+[tasks.test]
+description = "Run all tests (Elixir and Rust)"
+depends = ["cargo:test"]
+run = "mix test"
+
+[tasks.format]
+description = "Format both Elixir and Rust code"
+depends = ["cargo:fmt"]
+run = "mix format"
+
+[tasks.lint]
+description = "Run all lints"
+depends = ["cargo:clippy"]
+run = "mix format --check-formatted"
+
+[tasks.credo]
+description = "Run Credo"
+run = "mix credo --strict"
+
+[tasks.dialyzer]
+description = "Run Dialyzer"
+run = "mix dialyzer"
+
+[tasks.fix]
+description = "Fix all fixable issues (format and clippy)"
+depends = ["format", "cargo:clippy:fix"]
+
+[tasks.ci]
+description = "Run format, lint, and test (fixing what can be fixed)"
+depends = ["fix", "credo", "dialyzer", "test"]
