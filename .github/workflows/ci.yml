@@ -12,9 +12,47 @@ env:
   RUST_TOOLCHAIN: "1.95.0"
 
 jobs:
+  rust:
+    name: rust
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          components: rustfmt, clippy
+
+      - name: Cache cargo registry & target
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            native/delta_ex_native/target
+          key: ${{ runner.os }}-cargo-${{ env.RUST_TOOLCHAIN }}-${{ hashFiles('native/delta_ex_native/Cargo.lock', 'native/delta_ex_native/src/**/*.rs', 'native/delta_ex_native/Cargo.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-${{ env.RUST_TOOLCHAIN }}-${{ hashFiles('native/delta_ex_native/Cargo.lock') }}-
+            ${{ runner.os }}-cargo-${{ env.RUST_TOOLCHAIN }}-
+            ${{ runner.os }}-cargo-
+
+      - name: Cargo fmt
+        working-directory: native/delta_ex_native
+        run: cargo fmt --all -- --check
+
+      - name: Cargo clippy
+        working-directory: native/delta_ex_native
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Cargo test
+        working-directory: native/delta_ex_native
+        run: cargo test
+
   test:
     name: test (elixir ${{ matrix.elixir }} / otp ${{ matrix.otp }})
     runs-on: ubuntu-24.04
+    needs: rust
     strategy:
       fail-fast: false
       matrix:
@@ -38,7 +76,6 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
-          components: rustfmt, clippy
 
       - name: Cache mix deps & PLTs
         uses: actions/cache@v4
@@ -57,8 +94,10 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             native/delta_ex_native/target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('native/delta_ex_native/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-${{ env.RUST_TOOLCHAIN }}-${{ hashFiles('native/delta_ex_native/Cargo.lock', 'native/delta_ex_native/src/**/*.rs', 'native/delta_ex_native/Cargo.toml') }}
           restore-keys: |
+            ${{ runner.os }}-cargo-${{ env.RUST_TOOLCHAIN }}-${{ hashFiles('native/delta_ex_native/Cargo.lock') }}-
+            ${{ runner.os }}-cargo-${{ env.RUST_TOOLCHAIN }}-
             ${{ runner.os }}-cargo-
 
       - name: Install dependencies
@@ -67,23 +106,11 @@ jobs:
       - name: Check formatting
         run: mix format --check-formatted
 
-      - name: Cargo fmt
-        working-directory: native/delta_ex_native
-        run: cargo fmt --all -- --check
-
-      - name: Cargo clippy
-        working-directory: native/delta_ex_native
-        run: cargo clippy --all-targets -- -D warnings
-
       - name: Credo
         run: mix credo --strict
 
       - name: Compile (warnings as errors)
         run: mix compile --warnings-as-errors
-
-      - name: Cargo test
-        working-directory: native/delta_ex_native
-        run: cargo test
 
       - name: Run tests
         run: mix test
@@ -114,14 +141,18 @@ jobs:
             deps
           key: ${{ runner.os }}-mix-s3-28.4-1.19.5-${{ hashFiles('**/mix.lock') }}
 
-      - name: Cache cargo
+      - name: Cache cargo registry & target
         uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
             native/delta_ex_native/target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('native/delta_ex_native/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-${{ env.RUST_TOOLCHAIN }}-${{ hashFiles('native/delta_ex_native/Cargo.lock', 'native/delta_ex_native/src/**/*.rs', 'native/delta_ex_native/Cargo.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-${{ env.RUST_TOOLCHAIN }}-${{ hashFiles('native/delta_ex_native/Cargo.lock') }}-
+            ${{ runner.os }}-cargo-${{ env.RUST_TOOLCHAIN }}-
+            ${{ runner.os }}-cargo-
 
       - name: Start MinIO and provision bucket
         run: |
