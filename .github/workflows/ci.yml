@@ -25,7 +25,7 @@ jobs:
           components: rustfmt, clippy
 
       - name: Cache cargo registry & target
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/registry
@@ -78,7 +78,7 @@ jobs:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
 
       - name: Cache mix deps & PLTs
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             deps
@@ -88,7 +88,7 @@ jobs:
             ${{ runner.os }}-mix-${{ matrix.otp }}-${{ matrix.elixir }}-
 
       - name: Cache cargo registry & target
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/registry
@@ -135,14 +135,14 @@ jobs:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
 
       - name: Cache mix deps
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             deps
           key: ${{ runner.os }}-mix-s3-28.4-1.19.5-${{ hashFiles('**/mix.lock') }}
 
       - name: Cache cargo registry & target
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/registry
