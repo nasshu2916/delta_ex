@@ -45,7 +45,6 @@ jobs:
         with:
           path: |
             deps
-            _build
             priv/plts
           key: ${{ runner.os }}-mix-${{ matrix.otp }}-${{ matrix.elixir }}-${{ hashFiles('**/mix.lock') }}
           restore-keys: |
@@ -113,7 +112,6 @@ jobs:
         with:
           path: |
             deps
-            _build
           key: ${{ runner.os }}-mix-s3-28.4-1.19.5-${{ hashFiles('**/mix.lock') }}
 
       - name: Cache cargo
