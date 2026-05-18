@@ -16,7 +16,7 @@ jobs:
     name: rust
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@master
@@ -64,7 +64,7 @@ jobs:
           - elixir: "1.19.5"
             otp: "28.4"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup BEAM
         uses: erlef/setup-beam@v1
@@ -123,7 +123,7 @@ jobs:
     runs-on: ubuntu-24.04
     needs: test
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: erlef/setup-beam@v1
         with:
