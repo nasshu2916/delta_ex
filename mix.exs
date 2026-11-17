@@ -63,7 +63,7 @@ defmodule DeltaEx.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:rustler, "~> 0.37.3"},
+      {:rustler, "~> 0.38.0"},
       {:telemetry, "~> 1.3"},
       {:ex_doc, "~> 0.34", only: :dev, runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
